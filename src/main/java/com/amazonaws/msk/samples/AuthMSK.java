@@ -1,20 +1,16 @@
 package com.amazonaws.msk.samples;
 
-import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.*;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-
-
 import com.amazonaws.services.acmpca.AWSACMPCA;
 import com.amazonaws.services.acmpca.AWSACMPCAClientBuilder;
-
 import com.amazonaws.services.acmpca.model.*;
-
 import java.io.*;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -22,8 +18,10 @@ import java.security.cert.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import com.amazonaws.AmazonClientException;
+import com.amazonaws.services.acmpca.model.SigningAlgorithm;
 import com.amazonaws.waiters.Waiter;
 import com.amazonaws.waiters.WaiterParameters;
 import com.amazonaws.waiters.WaiterTimedOutException;
@@ -31,21 +29,43 @@ import com.amazonaws.waiters.WaiterUnrecoverableException;
 import sun.security.pkcs10.PKCS10;
 import sun.security.tools.keytool.CertAndKeyGen;
 import sun.security.x509.X500Name;
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 
 
 public class AuthMSK {
 
-    final String endpointProtocol = "acm-pca.us-east-1.amazonaws.com";
-    final String endpointRegion = "us-east-1";
-    final String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
+    private static final Logger logger = LogManager.getLogger(AuthMSK.class);
+
+    //final String endpointProtocol = "acm-pca.us-east-1.amazonaws.com";
+    //final String endpointRegion = "us-east-1";
+    //final String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
     //final String keystoreLocation = "/Users/rcchakr/kafka.client.keystore.jks";
 
+    @Parameter(names={"--region", "-reg"})
+    private String region = "us-east-1";
+    private String endpointProtocol = "acm-pca." + region + ".amazonaws.com";
+
+    @Parameter(names={"--keystoreLocation", "-key"})
+    private String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
+
+    @Parameter(names={"--certificateAuthorityArn", "-ca"}, required = true)
+    private String certificateAuthorityArn;
+
+    @Parameter(names={"--alias", "-a"})
+    private String alias = "msk";
+
+    @Parameter(names={"--keystoreType", "-kt"})
+    private String keystoreType = "PKCS12";
+
     private AWSCredentials getAWSCredentials(){
-        AWSCredentials credentials = null;
+        AWSCredentials credentials;
         try {
-            credentials = new ProfileCredentialsProvider("default").getCredentials();
+            credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException(
                     "Cannot load the credentials from the credential profiles file. " +
@@ -63,37 +83,23 @@ public class AuthMSK {
                 .withCertificateAuthorityArn(certificateAuthorityArn)
                 .withPermanentDeletionTimeInDays(permanentDeletionTimeInDays);
 
-        DeleteCertificateAuthorityResult result;
-        try {
-            result = client.deleteCertificateAuthority(deleteCertificateAuthorityRequest);
-        }
-        catch (InvalidArgsException ex)
-        {
-            throw ex;
-        }
-        catch (InvalidPolicyException ex)
-        {
-            throw ex;
-        }
-        catch (LimitExceededException ex)
-        {
-            throw ex;
-        }
-        System.out.println(result);
+        DeleteCertificateAuthorityResult result = client.deleteCertificateAuthority(deleteCertificateAuthorityRequest);
+
+
+        logger.info("Delete Certifcate Authority Resposne: \n" + result);
 
     }
 
     private AWSACMPCA getAWSACMPCAClient(){
         // Define the endpoint for your sample.
         EndpointConfiguration endpoint =
-                new AwsClientBuilder.EndpointConfiguration(endpointProtocol, endpointRegion);
+                new AwsClientBuilder.EndpointConfiguration(endpointProtocol, region);
 
         // Create a client that you can use to make requests.
-        AWSACMPCA client = AWSACMPCAClientBuilder.standard()
+        return AWSACMPCAClientBuilder.standard()
                 .withEndpointConfiguration(endpoint)
                 .withCredentials(new AWSStaticCredentialsProvider(getAWSCredentials()))
                 .build();
-        return client;
 
     }
 
@@ -139,7 +145,7 @@ public class AuthMSK {
                 .withValue("MSK");
 
         // Add the tags to a collection.
-        ArrayList<Tag> tags = new ArrayList<Tag>();
+        ArrayList<Tag> tags = new ArrayList<>();
         tags.add(tag1);
         tags.add(tag2);
 
@@ -153,26 +159,13 @@ public class AuthMSK {
 
 
         // Create the private CA.
-        CreateCertificateAuthorityResult result = null;
-        try {
-            result = client.createCertificateAuthority(req);
-        }
-        catch (InvalidArgsException ex)
-        {
-            throw ex;
-        }
-        catch (InvalidPolicyException ex)
-        {
-            throw ex;
-        }
-        catch (LimitExceededException ex)
-        {
-            throw ex;
-        }
+        CreateCertificateAuthorityResult result;
+
+        result = client.createCertificateAuthority(req);
 
         // Retrieve the ARN of the private CA.
         String arn = result.getCertificateAuthorityArn();
-        System.out.println(arn);
+        logger.info("Certificate Authority Arn: " + arn);
 
         return arn;
     }
@@ -180,7 +173,7 @@ public class AuthMSK {
     private KeyPair generateKeyPair(String algorithm, int keySize){
 
         try {
-            KeyPairGenerator keyPairGenerator = null;
+            KeyPairGenerator keyPairGenerator;
             keyPairGenerator = KeyPairGenerator.getInstance(algorithm);
             keyPairGenerator.initialize(keySize);
             return keyPairGenerator.generateKeyPair();
@@ -191,100 +184,107 @@ public class AuthMSK {
         return null;
     }
 
+    private void storeKeystoreKeyEntry(X509Certificate [] certificateChain, String alias, String password, String keystoreType, Key key) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException{
+        KeyStore keystore = KeyStore.getInstance(keystoreType);
+        keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
+        //System.out.println(cert.toString());
+        if (key != null){
+            keystore.setKeyEntry(alias, key, password.toCharArray(), certificateChain);
+        } else {
+            keystore.setKeyEntry(alias, keystore.getKey(alias, password.toCharArray()), password.toCharArray(), certificateChain);
+        }
+        keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
+    }
+
     private void storeKeystoreClientCertificate(X509Certificate [] certificateChain) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException {
 
-        try {
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(new FileInputStream(keystoreLocation), "password".toCharArray());
             //System.out.println(cert.toString());
 
             keystore.setKeyEntry("msk", keystore.getKey("msk", "password".toCharArray()), "password".toCharArray(), certificateChain);
             keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
-        } catch (KeyStoreException e) {
-            throw e;
-        } catch (IOException e) {
-            throw e;
-        } catch (NoSuchAlgorithmException e) {
-            throw e;
-        } catch (CertificateException e) {
-            throw e;
-        } catch (UnrecoverableKeyException e) {
-            throw e;
-        }
     }
 
-    private CertAndKeyGen generateKeyPairAndCert(){
-        try {
+    private CertAndKeyGen generateKeyPairAndCert() throws NoSuchAlgorithmException, InvalidKeyException {
+
             CertAndKeyGen gen = new CertAndKeyGen("RSA","SHA1WithRSA");
             gen.generate(2048);
             return gen;
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
-    private CertAndKeyGen createKeyStore() throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, InvalidKeyException, SignatureException, NoSuchProviderException {
+    private void createKeyStoreIfMissing(String keystoreType, String password) throws CertificateException, NoSuchAlgorithmException, IOException, KeyStoreException {
 
-
+        KeyStore keystore = KeyStore.getInstance(keystoreType);
         try {
-            //KeyPair keyPair = generateKeyPair("RSA", 2048);
-            CertAndKeyGen gen = generateKeyPairAndCert();
-            KeyStore keystore = KeyStore.getInstance("PKCS12");
-            //KeyStore keystore = KeyStore.getInstance("JKS");
+            keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
+            logger.info("Loading existing keystore");
+        } catch (FileNotFoundException e) {
+            logger.info("Creating new keystore");
             keystore.load(null, null);
-            InetAddress.getLocalHost().getHostName();
-
-            X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), (long)365*24*3600);
-
-            X509Certificate[] chain = new X509Certificate[1];
-            chain[0] = cert;
-            keystore.setKeyEntry("msk", gen.getPrivateKey(), "password".toCharArray(), chain);
-            keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
-            return gen;
-        } catch (KeyStoreException e) {
-            throw e;
-        } catch (IOException e) {
-            throw e;
-        } catch (NoSuchAlgorithmException e) {
-            throw e;
-        } catch (CertificateException e) {
-            throw e;
-        } catch (InvalidKeyException e) {
-            throw e;
-        } catch (SignatureException e) {
-            throw e;
-        } catch (NoSuchProviderException e) {
-            throw e;
         }
-
+        keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
     }
 
-    private String generateCSR() throws KeyStoreException {
+    private X509Certificate [] generateKeyCertificateChain(CertAndKeyGen gen) throws IOException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException, SignatureException, InvalidKeyException {
+        X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), (long)365*24*3600);
+
+        X509Certificate[] chain = new X509Certificate[1];
+        chain[0] = cert;
+        return chain;
+    }
+
+//    private void createKeyStore(CertAndKeyGen gen) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, InvalidKeyException, SignatureException, NoSuchProviderException {
+//
+//
+//        try {
+//            //KeyPair keyPair = generateKeyPair("RSA", 2048);
+//            //CertAndKeyGen gen = generateKeyPairAndCert();
+//            KeyStore keystore = KeyStore.getInstance("PKCS12");
+//            //KeyStore keystore = KeyStore.getInstance("JKS");
+//            try {
+//                keystore.load(new FileInputStream(keystoreLocation), "password".toCharArray());
+//                logger.info("Loading existing keystore");
+//            } catch (FileNotFoundException e) {
+//                keystore.load(null, null);
+//            }
+//
+//            X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), (long)365*24*3600);
+//
+//            X509Certificate[] chain = new X509Certificate[1];
+//            chain[0] = cert;
+//            keystore.setKeyEntry("msk", gen.getPrivateKey(), "password".toCharArray(), chain);
+//            keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
+//
+//        } catch (KeyStoreException e) {
+//            throw e;
+//        } catch (IOException e) {
+//            throw e;
+//        } catch (NoSuchAlgorithmException e) {
+//            throw e;
+//        } catch (CertificateException e) {
+//            throw e;
+//        } catch (InvalidKeyException e) {
+//            throw e;
+//        } catch (SignatureException e) {
+//            throw e;
+//        } catch (NoSuchProviderException e) {
+//            throw e;
+//        }
+//
+//    }
+
+    private String generateCSR(CertAndKeyGen gen) throws IOException, InvalidKeyException, SignatureException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         PrintStream printStream = new PrintStream(outStream);
-        try {
-            CertAndKeyGen gen = createKeyStore();
+
             X500Name x500Name = new X500Name("CN=" + InetAddress.getLocalHost().getHostName());
             PKCS10 pkcs10CSR = gen.getCertRequest(x500Name);
             pkcs10CSR.print(printStream);
-            String csrReq = outStream.toString().replace("BEGIN NEW CERTIFICATE REQUEST", "BEGIN CERTIFICATE REQUEST").replace("END NEW CERTIFICATE REQUEST", "END CERTIFICATE REQUEST");
-            return csrReq;
-        } catch (KeyStoreException e) {
-            throw e;
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException | NoSuchAlgorithmException | CertificateException | NoSuchProviderException e) {
-            e.printStackTrace();
-        } catch (SignatureException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return outStream.toString().replace("BEGIN NEW CERTIFICATE REQUEST", "BEGIN CERTIFICATE REQUEST").replace("END NEW CERTIFICATE REQUEST", "END CERTIFICATE REQUEST");
     }
 
-    public static ByteBuffer stringToByteBuffer(final String string) {
+    private static ByteBuffer stringToByteBuffer(final String string) {
         if (Objects.isNull(string)) {
             return null;
         }
@@ -303,36 +303,45 @@ public class AuthMSK {
                                             .withValue(300L))
                 .withIdempotencyToken("1234");
 
-        IssueCertificateResult issueCertificateResult = null;
+        IssueCertificateResult issueCertificateResult;
+
+        issueCertificateResult = client.issueCertificate(issueCertificateRequest);
+        logger.info("Certificate Arn: " + issueCertificateResult.getCertificateArn());
+        return issueCertificateResult.getCertificateArn();
+
+    }
+
+    private String getCertificateResult(AWSACMPCA client, GetCertificateRequest getCertificateRequest, int retries){
+        GetCertificateResult getCertificateResult;
+
         try {
-            issueCertificateResult = client.issueCertificate(issueCertificateRequest);
-            System.out.println(issueCertificateResult.getCertificateArn());
-            return issueCertificateResult.getCertificateArn();
-        } catch(LimitExceededException ex)
-        {
-            ex.printStackTrace();
+            getCertificateResult = client.getCertificate(getCertificateRequest);
+            //System.out.println("Certificate: " + getCertificateResult.getCertificate());
+            //System.out.println("Certificate chain: " + getCertificateResult.getCertificateChain());
+
+            //System.out.println(getCertificateResult.getCertificateChain());
+            return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
+        } catch (RequestInProgressException ex) {
+
+            // Create waiter to wait on successful creation of the certificate file.
+            Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
+            try {
+                waiter.run(new WaiterParameters<>(getCertificateRequest));
+            } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
+                //Explicit short circuit when the recourse transitions into
+                //an undesired state.
+                e.printStackTrace();
+            } //Failed to transition into desired state even after polling.
+
+            retries++;
+            if (retries <= 5){
+                getCertificateResult(client, getCertificateRequest, retries);
+            } else {
+                throw ex;
+            }
+
         }
-        catch(ResourceNotFoundException ex)
-        {
-            ex.printStackTrace();
-        }
-        catch(InvalidStateException ex)
-        {
-            ex.printStackTrace();
-        }
-        catch (InvalidArnException ex)
-        {
-            ex.printStackTrace();
-        }
-        catch (InvalidArgsException ex)
-        {
-            ex.printStackTrace();
-        }
-        catch (MalformedCSRException ex)
-        {
-            ex.printStackTrace();
-        }
-        return null;
+        throw new RequestInProgressException("Get Certificate failed after 5 tries. Certificate still not issued. Exiting");
     }
 
     private String getCertificate(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
@@ -344,47 +353,31 @@ public class AuthMSK {
         Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
         try {
             waiter.run(new WaiterParameters<>(getCertificateRequest));
-        } catch(WaiterUnrecoverableException e) {
+        } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
             //Explicit short circuit when the recourse transitions into
             //an undesired state.
-            throw e;
-        } catch(WaiterTimedOutException e) {
-            //Failed to transition into desired state even after polling.
-            throw e;
-        } catch(AWSACMPCAException e) {
-            //Unexpected service exception.
-            throw e;
-        }
+            e.printStackTrace();
+        } //Failed to transition into desired state even after polling.
 
-        GetCertificateResult getCertificateResult = null;
 
-        try {
+        GetCertificateResult getCertificateResult;
+
+
             getCertificateResult = client.getCertificate(getCertificateRequest);
             //System.out.println("Certificate: " + getCertificateResult.getCertificate());
             //System.out.println("Certificate chain: " + getCertificateResult.getCertificateChain());
 
             //System.out.println(getCertificateResult.getCertificateChain());
             return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
-        } catch (RequestInProgressException ex) {
-            throw ex;
-        } catch (RequestFailedException ex) {
-            throw ex;
-        } catch (ResourceNotFoundException ex) {
-            throw ex;
-        } catch (InvalidArnException ex) {
-            throw ex;
-        } catch (InvalidStateException ex) {
-            throw ex;
-        }
-
     }
+
     private X509Certificate [] getCertChain(String certChain) throws CertificateException {
-        Integer fromIndex = 0;
-        List<String> certs = new ArrayList<String>();
-        Integer addVal = 0;
+        int fromIndex = 0;
+        List<String> certs = new ArrayList<>();
+        Integer addVal;
 
         while (certChain.indexOf("-----BEGIN CERTIFICATE-----\n", fromIndex) != -1) {
-            Integer beginIndex = certChain.indexOf("-----BEGIN CERTIFICATE-----\n", fromIndex);
+            int beginIndex = certChain.indexOf("-----BEGIN CERTIFICATE-----\n", fromIndex);
             Integer endIndex = certChain.indexOf("-----END CERTIFICATE-----\n", fromIndex);
             if (endIndex == -1) {
                 endIndex = certChain.indexOf("-----END CERTIFICATE-----", fromIndex);
@@ -400,7 +393,7 @@ public class AuthMSK {
         }
         X509Certificate [] chain = new X509Certificate[certs.size()];
         CertificateFactory cf = CertificateFactory.getInstance("X509");
-        Integer i = 0;
+        int i = 0;
 
         for (String cert: certs) {
             X509Certificate x509Certificate = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certs.get(i).getBytes()));
@@ -415,21 +408,31 @@ public class AuthMSK {
     public static void main(String[] args) throws Exception{
 
         //String certificateAuthorityArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240";
-        String certificateAuthorityArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/1084d669-c85d-49f5-8be8-a5a34d7f92bf";
+        //String certificateAuthorityArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/1084d669-c85d-49f5-8be8-a5a34d7f92bf";
         //String certificateArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240/certificate/1f77f6345879ad591638161ea11a1779";
         //arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240/certificate/1887e9a4fb40f1269b68b37f089001b9 - use next
 
         AuthMSK authMSK = new AuthMSK();
+        JCommander.newBuilder()
+                .addObject(authMSK)
+                .build()
+                .parse(args);
+
         AWSACMPCA client = authMSK.getAWSACMPCAClient();
         //authMSK.createCertificateAuthority(client);
-        String csrReq = authMSK.generateCSR();
+        CertAndKeyGen gen = authMSK.generateKeyPairAndCert();
+        authMSK.createKeyStoreIfMissing(authMSK.keystoreType, "password");
+        X509Certificate [] privateKeyCertificateChain = authMSK.generateKeyCertificateChain(gen);
+        authMSK.storeKeystoreKeyEntry(privateKeyCertificateChain, authMSK.alias, "password", authMSK.keystoreType, gen.getPrivateKey());
+        String csrReq = authMSK.generateCSR(gen);
         //System.out.println(csrReq);
-        String certificateArn = authMSK.issueCertificate(certificateAuthorityArn, csrReq, client);
-        System.out.println(certificateArn);
-        String certChain = authMSK.getCertificate(certificateArn, certificateAuthorityArn, client);
+        String certificateArn = authMSK.issueCertificate(authMSK.certificateAuthorityArn, csrReq, client);
+        //System.out.println(certificateArn);
+        String certChain = authMSK.getCertificate(certificateArn, authMSK.certificateAuthorityArn, client);
         //System.out.println(certificate);
         X509Certificate [] certificateChain = authMSK.getCertChain(certChain);
-        authMSK.storeKeystoreClientCertificate(certificateChain);
+        //authMSK.storeKeystoreClientCertificate(certificateChain);
+        authMSK.storeKeystoreKeyEntry(certificateChain, authMSK.alias, "password", authMSK.keystoreType, null);
         //byte[] csr = authMSK.generateCSR("SHA256WithRSA", authMSK.createKeyStore());
     }
 }
