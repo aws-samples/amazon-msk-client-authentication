@@ -62,6 +62,9 @@ public class AuthMSK {
     @Parameter(names={"--getClientCertificate", "-gcc"})
     private boolean getClientCertificate;
 
+    @Parameter(names={"--certificateValidity", "-cv"})
+    private long certificateValidity = 300L;
+
     private AWSCredentials getAWSCredentials(){
         AWSCredentials credentials;
         try {
@@ -207,7 +210,7 @@ public class AuthMSK {
 
     private CertAndKeyGen generateKeyPairAndCert() throws NoSuchAlgorithmException, InvalidKeyException {
 
-            CertAndKeyGen gen = new CertAndKeyGen("RSA","SHA1WithRSA");
+            CertAndKeyGen gen = new CertAndKeyGen("RSA","SHA256WithRSA");
             gen.generate(2048);
             return gen;
     }
@@ -226,7 +229,7 @@ public class AuthMSK {
     }
 
     private X509Certificate [] generateKeyCertificateChain(CertAndKeyGen gen) throws IOException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException, SignatureException, InvalidKeyException {
-        X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), (long)365*24*3600);
+        X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), certificateValidity *24*3600);
 
         X509Certificate[] chain = new X509Certificate[1];
         chain[0] = cert;
@@ -299,7 +302,7 @@ public class AuthMSK {
                 .withCsr(stringToByteBuffer(csr))
                 .withSigningAlgorithm(SigningAlgorithm.SHA256WITHRSA)
                 .withValidity(new Validity().withType(ValidityPeriodType.DAYS)
-                                            .withValue(300L))
+                                            .withValue(certificateValidity))
                 .withIdempotencyToken("1234");
 
         IssueCertificateResult issueCertificateResult;
