@@ -1,16 +1,13 @@
 package com.amazonaws.msk.samples;
 
 import com.amazonaws.auth.*;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.acmpca.AWSACMPCA;
 import com.amazonaws.services.acmpca.AWSACMPCAClientBuilder;
 import com.amazonaws.services.acmpca.model.*;
 import java.io.*;
-import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -18,8 +15,6 @@ import java.security.cert.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
-
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.acmpca.model.SigningAlgorithm;
 import com.amazonaws.waiters.Waiter;
@@ -41,11 +36,6 @@ import org.apache.logging.log4j.Logger;
 public class AuthMSK {
 
     private static final Logger logger = LogManager.getLogger(AuthMSK.class);
-
-    //final String endpointProtocol = "acm-pca.us-east-1.amazonaws.com";
-    //final String endpointRegion = "us-east-1";
-    //final String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
-    //final String keystoreLocation = "/Users/rcchakr/kafka.client.keystore.jks";
 
     @Parameter(names={"--region", "-reg"})
     private String region = "us-east-1";
@@ -180,7 +170,7 @@ public class AuthMSK {
         return arn;
     }*/
 
-    private KeyPair generateKeyPair(String algorithm, int keySize){
+    /*private KeyPair generateKeyPair(String algorithm, int keySize){
 
         try {
             KeyPairGenerator keyPairGenerator;
@@ -192,12 +182,12 @@ public class AuthMSK {
             exception.printStackTrace();
         }
         return null;
-    }
+    }*/
 
     private void storeKeystoreKeyEntry(X509Certificate [] certificateChain, String alias, String password, String keystoreType, Key key) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException{
         KeyStore keystore = KeyStore.getInstance(keystoreType);
         keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
-        //System.out.println(cert.toString());
+
         if (key != null){
             keystore.setKeyEntry(alias, key, password.toCharArray(), certificateChain);
         } else {
@@ -210,7 +200,6 @@ public class AuthMSK {
 
             KeyStore keystore = KeyStore.getInstance("PKCS12");
             keystore.load(new FileInputStream(keystoreLocation), "password".toCharArray());
-            //System.out.println(cert.toString());
 
             keystore.setKeyEntry("msk", keystore.getKey("msk", "password".toCharArray()), "password".toCharArray(), certificateChain);
             keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
@@ -369,16 +358,10 @@ public class AuthMSK {
             e.printStackTrace();
         } //Failed to transition into desired state even after polling.
 
-
         GetCertificateResult getCertificateResult;
 
-
-            getCertificateResult = client.getCertificate(getCertificateRequest);
-            //System.out.println("Certificate: " + getCertificateResult.getCertificate());
-            //System.out.println("Certificate chain: " + getCertificateResult.getCertificateChain());
-
-            //System.out.println(getCertificateResult.getCertificateChain());
-            return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
+        getCertificateResult = client.getCertificate(getCertificateRequest);
+        return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
     }
 
     private X509Certificate [] getCertChain(String certChain) throws CertificateException {
@@ -417,10 +400,6 @@ public class AuthMSK {
 
     public static void main(String[] args) throws Exception{
 
-        //String certificateAuthorityArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240";
-        //String certificateAuthorityArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/1084d669-c85d-49f5-8be8-a5a34d7f92bf";
-        //String certificateArn = "arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240/certificate/1f77f6345879ad591638161ea11a1779";
-        //arn:aws:acm-pca:us-east-1:862656071619:certificate-authority/63d9d5b5-e39e-4135-a2d4-6d1ad9940240/certificate/1887e9a4fb40f1269b68b37f089001b9 - use next
 
         AuthMSK authMSK = new AuthMSK();
         JCommander jc = JCommander.newBuilder()
@@ -428,12 +407,11 @@ public class AuthMSK {
                 .build();
         jc.parse(args);
         AWSACMPCA client = authMSK.getAWSACMPCAClient();
-        //System.out.println(authMSK.certificateAuthorityArn);
-        //System.out.println(authMSK.certificateArn);
+
         if (!authMSK.getClientCertificate){
 
             if (authMSK.certificateArn != null){
-                logger.info("Certificate Arn provided without the parameter --getClientCertificate(or -gcc). It will be ignored and a new certificate issued from ACM PCA");
+                logger.info("Certificate Arn provided without the parameter --getClientCertificate(or -gcc). It will be ignored and a new certificate issued from ACM PCA.");
             }
 
             logger.info("Generating private key and certificate");
@@ -458,33 +436,9 @@ public class AuthMSK {
         logger.info(String.format("Getting Certificate with Arn: %s\n from Certificate Authority with Arn: %s\n", authMSK.certificateArn, authMSK.certificateAuthorityArn));
         String certChain = authMSK.getCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client);
         logger.info(String.format("Retrieved certificate chain: \n%s\n ", certChain));
-        //System.out.println(certificate);
         logger.info("Converting into X509 certificate chain");
         X509Certificate [] certificateChain = authMSK.getCertChain(certChain);
-        //authMSK.storeKeystoreClientCertificate(certificateChain);
         logger.info(String.format("Storing certificate in keystore: %s\n", authMSK.keystoreLocation));
         authMSK.storeKeystoreKeyEntry(certificateChain, authMSK.alias, authMSK.keystorePassword, authMSK.keystoreType, null);
-
-
-
-        /*AWSACMPCA client = authMSK.getAWSACMPCAClient();
-        //authMSK.createCertificateAuthority(client);
-        CertAndKeyGen gen = authMSK.generateKeyPairAndCert();
-        authMSK.createKeyStoreIfMissing(authMSK.keystoreType, authMSK.keystorePassword);
-        X509Certificate [] privateKeyCertificateChain = authMSK.generateKeyCertificateChain(gen);
-        authMSK.storeKeystoreKeyEntry(privateKeyCertificateChain, authMSK.alias, authMSK.keystorePassword, authMSK.keystoreType, gen.getPrivateKey());
-        String csrReq = authMSK.generateCSR(gen);
-        //System.out.println(csrReq);
-        if (authMSK.certificateArn == null){
-            authMSK.certificateArn = authMSK.issueCertificate(authMSK.certificateAuthorityArn, csrReq, client);
-        }
-
-        //System.out.println(certificateArn);
-        String certChain = authMSK.getCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client);
-        //System.out.println(certificate);
-        X509Certificate [] certificateChain = authMSK.getCertChain(certChain);
-        //authMSK.storeKeystoreClientCertificate(certificateChain);
-        authMSK.storeKeystoreKeyEntry(certificateChain, authMSK.alias, authMSK.keystorePassword, authMSK.keystoreType, null);
-        //byte[] csr = authMSK.generateCSR("SHA256WithRSA", authMSK.createKeyStore());*/
     }
 }
