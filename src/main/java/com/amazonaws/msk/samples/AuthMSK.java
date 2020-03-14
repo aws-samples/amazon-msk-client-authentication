@@ -187,26 +187,38 @@ public class AuthMSK {
         return null;
     }*/
 
-    private void storeKeystoreKeyEntry(X509Certificate [] certificateChain, String alias, String password, String keystoreType, Key key) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException{
+    private void storeKeystoreKeyEntry(X509Certificate [] certificateChain, String alias, String password, String keystoreType, Key key) throws Exception {
         KeyStore keystore = KeyStore.getInstance(keystoreType);
-        keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
+        try {
+            keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
+        } catch (IOException e) {
+            if (e.getMessage().equals("keystore password was incorrect"))
+                logger.info(String.format("Found existing keystore at location: %s\n", keystoreLocation));
+            throw e;
+        }
 
         if (key != null){
             keystore.setKeyEntry(alias, key, password.toCharArray(), certificateChain);
         } else {
-            keystore.setKeyEntry(alias, keystore.getKey(alias, password.toCharArray()), password.toCharArray(), certificateChain);
+
+            key = keystore.getKey(alias, password.toCharArray());
+            if (key == null) {
+                throw new Exception(String.format("Unable to get key entry for alias %s. Did you provide the right alias?. Exiting..\n", alias));
+            }
+            keystore.setKeyEntry(alias, key, password.toCharArray(), certificateChain);
+
         }
-        keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
+        keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
     }
 
-    private void storeKeystoreClientCertificate(X509Certificate [] certificateChain) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException {
+    /*private void storeKeystoreClientCertificate(X509Certificate [] certificateChain, String password) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException {
 
             KeyStore keystore = KeyStore.getInstance("PKCS12");
-            keystore.load(new FileInputStream(keystoreLocation), "password".toCharArray());
+            keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
 
-            keystore.setKeyEntry("msk", keystore.getKey("msk", "password".toCharArray()), "password".toCharArray(), certificateChain);
-            keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
-    }
+            keystore.setKeyEntry("msk", keystore.getKey(alias, password.toCharArray()), password.toCharArray(), certificateChain);
+            keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
+    }*/
 
     private CertAndKeyGen generateKeyPairAndCert() throws NoSuchAlgorithmException, InvalidKeyException {
 
@@ -219,11 +231,15 @@ public class AuthMSK {
 
         KeyStore keystore = KeyStore.getInstance(keystoreType);
         try {
+            logger.info("Checking for existing keystore.");
             keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
-            logger.info("Loading existing keystore");
         } catch (FileNotFoundException e) {
-            logger.info("Creating new keystore");
+            logger.info("No existing keystore found. Creating new keystore.");
             keystore.load(null, null);
+        } catch (IOException e) {
+            if (e.getMessage().equals("keystore password was incorrect"))
+                logger.info(String.format("Found existing keystore at location: %s\n", keystoreLocation));
+            throw e;
         }
         keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
     }
