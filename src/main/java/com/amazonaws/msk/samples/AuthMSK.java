@@ -1,6 +1,7 @@
 package com.amazonaws.msk.samples;
 
 import com.amazonaws.auth.*;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.acmpca.AWSACMPCA;
@@ -29,8 +30,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-
+import javax.xml.bind.DatatypeConverter;
 
 
 public class AuthMSK {
@@ -62,13 +62,25 @@ public class AuthMSK {
     @Parameter(names={"--getClientCertificate", "-gcc"})
     private boolean getClientCertificate;
 
+    @Parameter(names={"--createPEMFiles", "-pem"})
+    private boolean createPEMFiles;
+
     @Parameter(names={"--certificateValidity", "-cv"})
     private long certificateValidity = 300L;
+
+    @Parameter(names={"--privateKeyPEMFileLocation", "-pkf"})
+    private String privateKeyPEMFileLocation = "/home/ec2-user/kafka240/private_key.pem";
+
+    @Parameter(names={"--clientCertFileLocation", "-ccf"})
+    private String clientCertFileLocation = "/home/ec2-user/kafka240/client_cert.pem";
+
+    @Parameter(names={"--caChainFileLocation", "-caf"})
+    private String caChainFileLocation = "/home/ec2-user/kafka240/ca_chain_cert.pem";
 
     private AWSCredentials getAWSCredentials(){
         AWSCredentials credentials;
         try {
-            credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+            credentials =  new DefaultAWSCredentialsProviderChain().getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException(
                     "Cannot load the credentials from the credential profiles file. " +
@@ -93,15 +105,12 @@ public class AuthMSK {
 
     }*/
 
-    private AWSACMPCA getAWSACMPCAClient(){
-        // Define the endpoint for your sample.
-        EndpointConfiguration endpoint =
-                new AwsClientBuilder.EndpointConfiguration(endpointProtocol, region);
-
+    private AWSACMPCA getAWSACMPCAClient(AWSStaticCredentialsProvider credentials){
         // Create a client that you can use to make requests.
         return AWSACMPCAClientBuilder.standard()
-                .withEndpointConfiguration(endpoint)
-                .withCredentials(new AWSStaticCredentialsProvider(getAWSCredentials()))
+                //.withEndpointConfiguration(endpoint)
+                .withRegion(region)
+                .withCredentials(credentials)
                 .build();
 
     }
@@ -233,6 +242,7 @@ public class AuthMSK {
         try {
             logger.info("Checking for existing keystore.");
             keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
+            logger.info(String.format("Existing keystore was found at location %s and loaded.", keystore));
         } catch (FileNotFoundException e) {
             logger.info("No existing keystore found. Creating new keystore.");
             keystore.load(null, null);
@@ -291,6 +301,15 @@ public class AuthMSK {
         }
 
     }*/
+
+    private byte [] getPrivateKeyinPEMFormat(CertAndKeyGen gen){
+
+        String keypem  = "-----BEGIN RSA PRIVATE KEY-----\n" +
+                DatatypeConverter.printBase64Binary(gen.getPrivateKey().getEncoded()) + "\n" +
+                "\n-----END RSA PRIVATE KEY-----\n";
+        logger.info(keypem);
+        return keypem.getBytes();
+    }
 
     private String generateCSR(CertAndKeyGen gen) throws IOException, InvalidKeyException, SignatureException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
@@ -383,6 +402,48 @@ public class AuthMSK {
         return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
     }
 
+    private String getClientCertificate(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
+        GetCertificateRequest getCertificateRequest = new GetCertificateRequest();
+        getCertificateRequest.withCertificateArn(certificateArn)
+                .withCertificateAuthorityArn(certificateAuthorityArn);
+
+        // Create waiter to wait on successful creation of the certificate file.
+        Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
+        try {
+            waiter.run(new WaiterParameters<>(getCertificateRequest));
+        } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
+            //Explicit short circuit when the recourse transitions into
+            //an undesired state.
+            e.printStackTrace();
+        } //Failed to transition into desired state even after polling.
+
+        GetCertificateResult getCertificateResult;
+
+        getCertificateResult = client.getCertificate(getCertificateRequest);
+        return getCertificateResult.getCertificate();
+    }
+
+    private String getCACertificateChain(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
+        GetCertificateRequest getCertificateRequest = new GetCertificateRequest();
+        getCertificateRequest.withCertificateArn(certificateArn)
+                .withCertificateAuthorityArn(certificateAuthorityArn);
+
+        // Create waiter to wait on successful creation of the certificate file.
+        Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
+        try {
+            waiter.run(new WaiterParameters<>(getCertificateRequest));
+        } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
+            //Explicit short circuit when the recourse transitions into
+            //an undesired state.
+            e.printStackTrace();
+        } //Failed to transition into desired state even after polling.
+
+        GetCertificateResult getCertificateResult;
+
+        getCertificateResult = client.getCertificate(getCertificateRequest);
+        return getCertificateResult.getCertificateChain();
+    }
+
     private X509Certificate [] getCertChain(String certChain) throws CertificateException {
         int fromIndex = 0;
         List<String> certs = new ArrayList<>();
@@ -417,6 +478,15 @@ public class AuthMSK {
         return chain;
     }
 
+    private void writePEMFile(String fileLocation, byte [] pem) throws IOException {
+        try (FileOutputStream file = new FileOutputStream(fileLocation)) {
+            file.write(pem);
+        } catch (FileNotFoundException e) {
+            logger.error(String.format("Nonexistent path %s provided for PEM file path. \n", fileLocation));
+            throw e;
+        }
+    }
+
     public static void main(String[] args) throws Exception{
 
 
@@ -425,7 +495,11 @@ public class AuthMSK {
                 .addObject(authMSK)
                 .build();
         jc.parse(args);
-        AWSACMPCA client = authMSK.getAWSACMPCAClient();
+
+        logger.info("Getting AWS credentials");
+        AWSCredentials credentials = authMSK.getAWSCredentials();
+        logger.info("Setting up AWS ACM PCA client");
+        AWSACMPCA client = authMSK.getAWSACMPCAClient(new AWSStaticCredentialsProvider(credentials));
 
         if (!authMSK.getClientCertificate){
 
@@ -436,6 +510,11 @@ public class AuthMSK {
             logger.info("Generating private key and certificate");
             CertAndKeyGen gen = authMSK.generateKeyPairAndCert();
             authMSK.createKeyStoreIfMissing(authMSK.keystoreType, authMSK.keystorePassword);
+            if (authMSK.createPEMFiles){
+                logger.info(String.format("Writing out private key to: %s\n", authMSK.caChainFileLocation));
+                authMSK.writePEMFile(authMSK.privateKeyPEMFileLocation, authMSK.getPrivateKeyinPEMFormat(gen));
+            }
+
             X509Certificate [] privateKeyCertificateChain = authMSK.generateKeyCertificateChain(gen);
             logger.info(String.format("Storing key and certificate in keystore: %s with alias: %s\n", authMSK.keystoreLocation, authMSK.alias));
             authMSK.storeKeystoreKeyEntry(privateKeyCertificateChain, authMSK.alias, authMSK.keystorePassword, authMSK.keystoreType, gen.getPrivateKey());
@@ -455,6 +534,14 @@ public class AuthMSK {
         logger.info(String.format("Getting Certificate with Arn: %s\n from Certificate Authority with Arn: %s\n", authMSK.certificateArn, authMSK.certificateAuthorityArn));
         String certChain = authMSK.getCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client);
         logger.info(String.format("Retrieved certificate chain: \n%s\n ", certChain));
+
+        if (authMSK.createPEMFiles){
+            logger.info(String.format("Writing out signed client certificate to: %s\n", authMSK.clientCertFileLocation));
+            authMSK.writePEMFile(authMSK.clientCertFileLocation, authMSK.getClientCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
+            logger.info(String.format("Writing out CA certificate chain to: %s\n", authMSK.caChainFileLocation));
+            authMSK.writePEMFile(authMSK.caChainFileLocation, authMSK.getCACertificateChain(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
+        }
+
         logger.info("Converting into X509 certificate chain");
         X509Certificate [] certificateChain = authMSK.getCertChain(certChain);
         logger.info(String.format("Storing certificate in keystore: %s\n", authMSK.keystoreLocation));
