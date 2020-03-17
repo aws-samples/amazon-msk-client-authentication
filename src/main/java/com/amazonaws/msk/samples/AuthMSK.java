@@ -18,6 +18,12 @@ import java.util.List;
 import java.util.Objects;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.acmpca.model.SigningAlgorithm;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
+import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
+import com.amazonaws.services.securitytoken.model.Credentials;
 import com.amazonaws.waiters.Waiter;
 import com.amazonaws.waiters.WaiterParameters;
 import com.amazonaws.waiters.WaiterTimedOutException;
@@ -77,6 +83,9 @@ public class AuthMSK {
     @Parameter(names={"--caChainFileLocation", "-caf"})
     private String caChainFileLocation = "/home/ec2-user/kafka240/ca_chain_cert.pem";
 
+    @Parameter(names={"--crossAccountRoleArn", "-cra"})
+    private String crossAccountRoleArn;
+
     private AWSCredentials getAWSCredentials(){
         AWSCredentials credentials;
         try {
@@ -89,6 +98,23 @@ public class AuthMSK {
                     e);
         }
         return credentials;
+    }
+
+    private BasicSessionCredentials crossAccountAssumeRole(AWSCredentialsProvider credentials){
+
+        AWSSecurityTokenService stsClient = AWSSecurityTokenServiceClientBuilder.standard()
+                .withRegion(region)
+                .withCredentials(credentials)
+                .build();
+
+        AssumeRoleRequest assumeRoleRequest = new AssumeRoleRequest();
+        assumeRoleRequest.withDurationSeconds(3600)
+                .withRoleArn(crossAccountRoleArn)
+                .withRoleSessionName("AssumeRolePCA");
+
+        AssumeRoleResult assumeRoleResult = stsClient.assumeRole(assumeRoleRequest);
+        Credentials assumeRoleCredentials = assumeRoleResult.getCredentials();
+        return new BasicSessionCredentials(assumeRoleCredentials.getAccessKeyId(), assumeRoleCredentials.getSecretAccessKey(), assumeRoleCredentials.getSessionToken());
     }
 
     /*private void deleteCertificateAuthority(String certificateAuthorityArn, Integer permanentDeletionTimeInDays, AWSACMPCA client){
@@ -496,10 +522,19 @@ public class AuthMSK {
                 .build();
         jc.parse(args);
 
+        AWSACMPCA client;
+
         logger.info("Getting AWS credentials");
         AWSCredentials credentials = authMSK.getAWSCredentials();
-        logger.info("Setting up AWS ACM PCA client");
-        AWSACMPCA client = authMSK.getAWSACMPCAClient(new AWSStaticCredentialsProvider(credentials));
+        if (authMSK.crossAccountRoleArn != null) {
+            logger.info("Getting cross account AWS credentials");
+            BasicSessionCredentials crossAccountCredentials = authMSK.crossAccountAssumeRole(new AWSStaticCredentialsProvider(credentials));
+            logger.info("Setting up AWS ACM PCA client");
+            client = authMSK.getAWSACMPCAClient(new AWSStaticCredentialsProvider(crossAccountCredentials));
+        } else {
+            logger.info("Setting up AWS ACM PCA client");
+            client = authMSK.getAWSACMPCAClient(new AWSStaticCredentialsProvider(credentials));
+        }
 
         if (!authMSK.getClientCertificate){
 
