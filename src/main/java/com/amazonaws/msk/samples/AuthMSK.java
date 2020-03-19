@@ -47,22 +47,22 @@ public class AuthMSK {
     private String region = "us-east-1";
     private String endpointProtocol = "acm-pca." + region + ".amazonaws.com";
 
-    @Parameter(names={"--keystoreLocation", "-key"})
+    @Parameter(names={"--keystoreLocation", "-ksl"})
     private String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
 
     @Parameter(names={"--certificateAuthorityArn", "-caa"}, required = true)
     private String certificateAuthorityArn;
 
-    @Parameter(names={"--alias", "-a"})
-    private String alias = "msk";
+    @Parameter(names={"--alias", "-ksa"})
+    private String alias = "ksa";
 
-    @Parameter(names={"--keystoreType", "-kt"})
+    @Parameter(names={"--keystoreType", "-kst"})
     private String keystoreType = "PKCS12";
 
-    @Parameter(names={"--keystorePassword", "-p"}, required = true)
+    @Parameter(names={"--keystorePassword", "-ksp"}, required = true)
     private String keystorePassword = "PKCS12";
 
-    @Parameter(names={"--certificateArn", "-ca"})
+    @Parameter(names={"--certificateArn", "-cfa"})
     private String certificateArn;
 
     @Parameter(names={"--getClientCertificate", "-gcc"})
@@ -71,7 +71,7 @@ public class AuthMSK {
     @Parameter(names={"--createPEMFiles", "-pem"})
     private boolean createPEMFiles;
 
-    @Parameter(names={"--certificateValidity", "-cv"})
+    @Parameter(names={"--certificateValidity", "-cfv"})
     private long certificateValidity = 300L;
 
     @Parameter(names={"--privateKeyPEMFileLocation", "-pkf"})
@@ -92,9 +92,7 @@ public class AuthMSK {
             credentials =  new DefaultAWSCredentialsProviderChain().getCredentials();
         } catch (Exception e) {
             throw new AmazonClientException(
-                    "Cannot load the credentials from the credential profiles file. " +
-                            "Please make sure that your credentials file is at the correct " +
-                            "location (~/.aws/credentials), and is in valid format.",
+                    "Cannot load the credentials using the DefaultAWSCredentialsProviderChain.",
                     e);
         }
         return credentials;
