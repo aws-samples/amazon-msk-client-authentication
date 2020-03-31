@@ -47,6 +47,9 @@ public class AuthMSK {
     private String region = "us-east-1";
     private String endpointProtocol = "acm-pca." + region + ".amazonaws.com";
 
+    @Parameter(names = {"--help", "-h"}, help = true)
+    private boolean help = false;
+
     @Parameter(names={"--keystoreLocation", "-ksl"})
     private String keystoreLocation = "/home/ec2-user/kafka240/kafka.client.keystore.jks";
 
@@ -54,7 +57,7 @@ public class AuthMSK {
     private String certificateAuthorityArn;
 
     @Parameter(names={"--alias", "-ksa"})
-    private String alias = "ksa";
+    private String alias = "msk";
 
     @Parameter(names={"--keystoreType", "-kst"})
     private String keystoreType = "PKCS12";
@@ -80,8 +83,8 @@ public class AuthMSK {
     @Parameter(names={"--clientCertFileLocation", "-ccf"})
     private String clientCertFileLocation = "/home/ec2-user/kafka240/client_cert.pem";
 
-    @Parameter(names={"--caChainFileLocation", "-caf"})
-    private String caChainFileLocation = "/home/ec2-user/kafka240/ca_chain_cert.pem";
+    //@Parameter(names={"--caChainFileLocation", "-caf"})
+    //private String caChainFileLocation = "/home/ec2-user/kafka240/ca_chain_cert.pem";
 
     @Parameter(names={"--crossAccountRoleArn", "-cra"})
     private String crossAccountRoleArn;
@@ -447,7 +450,7 @@ public class AuthMSK {
         return getCertificateResult.getCertificate();
     }
 
-    private String getCACertificateChain(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
+    /*private String getCACertificateChain(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
         GetCertificateRequest getCertificateRequest = new GetCertificateRequest();
         getCertificateRequest.withCertificateArn(certificateArn)
                 .withCertificateAuthorityArn(certificateAuthorityArn);
@@ -466,7 +469,7 @@ public class AuthMSK {
 
         getCertificateResult = client.getCertificate(getCertificateRequest);
         return getCertificateResult.getCertificateChain();
-    }
+    }*/
 
     private X509Certificate [] getCertChain(String certChain) throws CertificateException {
         int fromIndex = 0;
@@ -519,6 +522,10 @@ public class AuthMSK {
                 .addObject(authMSK)
                 .build();
         jc.parse(args);
+        if (authMSK.help){
+            jc.usage();
+            return;
+        }
 
         AWSACMPCA client;
 
@@ -544,7 +551,7 @@ public class AuthMSK {
             CertAndKeyGen gen = authMSK.generateKeyPairAndCert();
             authMSK.createKeyStoreIfMissing(authMSK.keystoreType, authMSK.keystorePassword);
             if (authMSK.createPEMFiles){
-                logger.info(String.format("Writing out private key to: %s\n", authMSK.caChainFileLocation));
+                logger.info(String.format("Writing out private key to: %s\n", authMSK.privateKeyPEMFileLocation));
                 authMSK.writePEMFile(authMSK.privateKeyPEMFileLocation, authMSK.getPrivateKeyinPEMFormat(gen));
             }
 
@@ -571,8 +578,8 @@ public class AuthMSK {
         if (authMSK.createPEMFiles){
             logger.info(String.format("Writing out signed client certificate to: %s\n", authMSK.clientCertFileLocation));
             authMSK.writePEMFile(authMSK.clientCertFileLocation, authMSK.getClientCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
-            logger.info(String.format("Writing out CA certificate chain to: %s\n", authMSK.caChainFileLocation));
-            authMSK.writePEMFile(authMSK.caChainFileLocation, authMSK.getCACertificateChain(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
+            //logger.info(String.format("Writing out CA certificate chain to: %s\n", authMSK.caChainFileLocation));
+            //authMSK.writePEMFile(authMSK.caChainFileLocation, authMSK.getCACertificateChain(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
         }
 
         logger.info("Converting into X509 certificate chain");
