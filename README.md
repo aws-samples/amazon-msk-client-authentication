@@ -2,19 +2,18 @@
 
 It is a common security requirement to enable encryption-in-transit and authentication with Apache Kafka. Apache Kafka 
 supports multiple authentication mechanisms including TLS mutual authentication using certificates, SASL 
-(Simple Authorization Security Layer) PLAINTEXT, SASL SCRAM, SASL GSSAPI, SASL OAUTHBEARER. As or this writing, Amazon MSK 
-(Amazon Managed Streaming for Apache Kafka) supports encryption in transit with TLS and TLS mutual authentication with 
-certificates for client authentication. However, the steps are involved and doing them manually could be prone to errors.
-This code helps automate the process of creating end installing end-entity certificates and renewing them when they expire.
+(Simple Authorization Security Layer) PLAINTEXT, SASL SCRAM, SASL GSSAPI, SASL OAUTHBEARER. As or this writing, 
+Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
+certificates for client authentication. This code helps automate the process of creating end installing end-entity certificates and renewing them when they expire.
 
-Amazon MSK utilizes ACM PCA (Amazon Certificate Manager Private CA) for TLS mutual authentication. For information about 
+Amazon MSK utilizes Amazon Certificate Manager Private CA (ACM PCA) for TLS mutual authentication. For information about 
 Private CAs, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html).
 The PCA can either be a root CA or a subordinate CA. If it is a root CA, you need to install a self-signed certificate 
 (the console provides an easy mechanism to do that). If it is a subordinate CA, you can either choose an ACM PCA root or
 subordinate CA or an external CA (in this case, the external CA which can be your own CA will become the root of your 
 certificate chain). In addition, for Amazon MSK to be able to use the ACM PCA, it needs to be in the same AWS account 
-as the Amazon MSK cluster. However, the Apache Kafka clients, for ex. the producers and consumers, Confluent Schema 
-Registry, Kafka connect or other Apache Kafka tools that need the end-entity certificates can be in an AWS account 
+as the Amazon MSK cluster. However, the Apache Kafka clients, for ex. the producers and consumers, schema 
+registries, Kafka Connect or other Apache Kafka tools that need the end-entity certificates can be in an AWS account 
 different from the AWS account that the ACM PCA is in. In that scenario, in order to be able to access the ACM PCA, 
 they need to assume a role in the account the ACM PCA is in and has the required permissions as the ACM PCA does not 
 support resource-based policies, only identity-based policies.
