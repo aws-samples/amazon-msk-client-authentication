@@ -50,13 +50,13 @@ The jar file accepts the following parameters:
 * **-caa (or --certificateAuthorityArn) (mandatory)**: The Arn of the Private Certificate Authority in ACM to issue the end-client certificates.
 * **-ksp (or --keystorePassword) (mandatory)**: The keystore password.
 * **-reg (or --region)(Default us-east-1)**: AWS Region.
-* **-ksl (or --keystoreLocation)(Default /home/ec2-user/kafka240/kafka.client.keystore.jks)**: The location of the keystore file.
+* **-ksl (or --keystoreLocation)(Default /tmp/kafka.client.keystore.jks)**: The location of the keystore file.
 * **-ksa (or --alias)(Default msk)**: The alias of the key entry in the keystore.
 * **-kst (or --keystoreType)(Default PKCS12)**: The keystore type.
 * **-cfv (or --certificateValidity)(Default 300)**: The validity of the certificate to be issued in days.
 * **-pem (or --createPEMFiles)**: Optional flag to create PEM files for the Private Key and the issued client certificate to be used by clients in python, node.js etc.
-* **-pkf (or --privateKeyPEMFileLocation)(Default /home/ec2-user/kafka240/private_key.pem)**: Specifies the Private Key PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
-* **-ccf (or --clientCertFileLocation)(Default /home/ec2-user/kafka240/client_cert.pem)**: Specified the Client Certificate PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
+* **-pkf (or --privateKeyPEMFileLocation)(Default /tmp/private_key.pem)**: Specifies the Private Key PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
+* **-ccf (or --clientCertFileLocation)(Default /tmp/client_cert.pem)**: Specified the Client Certificate PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
 * **-cra (or --crossAccountRoleArn)**: Optional parameter that specifies an IAM Role in the ACM PCA account to assume when the client is in a different account from the ACM PCA.
 * **-gcc (or --getClientCertificate)**: Optional flag denoting that the Private Key generation and certificate issuance can be skipped and 
       the certificate specified with the  **-cfa** parameter should be retrieved and installed in the keystore. 
@@ -141,7 +141,7 @@ that the Private Key PEM file is already available.***
                                   ssl_cafile='/tmp/truststore.pem'
                                 # For TLS mutual auth the above and:
                                   ssl_check_hostname=True,
-                                  ssl_certfile='/tmp/certificate.pem',
+                                  ssl_certfile='/tmp/client_cert.pem',
                                   ssl_keyfile='/tmp/private_key.pem')
                                 # for the trustore copy the truststore from /etc/ssl/certs or the oracle jvm cacerts (find /usr/lib/jvm/ -name "cacerts" -exec cp {} /home/ec2-user/kafka/kafka.client.truststore.jks \;)
                                 # to generate the the truststore.pem: keytool --list -rfc -keystore /home/ec2-user/kafka240/kafka.client.truststore.jks > truststore.pem 
