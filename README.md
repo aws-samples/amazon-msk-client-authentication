@@ -4,11 +4,14 @@ It is a common security requirement to enable encryption-in-transit and authenti
 supports multiple authentication mechanisms including TLS mutual authentication using certificates, SASL 
 (Simple Authorization Security Layer) PLAINTEXT, SASL SCRAM, SASL GSSAPI, SASL OAUTHBEARER. As or this writing, 
 Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
-certificates for client authentication. This code helps automate the process of creating end installing end-entity certificates and renewing them when they expire.
+certificates for client authentication. This code helps automate the process of creating and installing end-entity certificates 
+and renewing them when they expire.
 
-Amazon MSK utilizes Amazon Certificate Manager Private CA (ACM PCA) for TLS mutual authentication. For information about 
-Private CAs, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html).
-The PCA can either be a root CA or a subordinate CA. If it is a root CA, you need to install a self-signed certificate 
+Amazon MSK utilizes Amazon Certificate Manager Private Certificate Authority (ACM PCA) for TLS mutual authentication. For information about 
+Private Certificate Authoritys, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html).
+The PCA can either be a [root Certificate Authority](https://en.wikipedia.org/wiki/Root_certificate) (CA) or a 
+[subordinate Certificate Authority](https://www.ssl.com/article/subordinate-cas-and-why-you-might-need-one/). 
+If it is a root CA, you need to install a self-signed certificate 
 (the console provides an easy mechanism to do that). If it is a subordinate CA, you can either choose an ACM PCA root or
 subordinate CA or an external CA (in this case, the external CA which can be your own CA will become the root of your 
 certificate chain). In addition, for Amazon MSK to be able to use the ACM PCA, it needs to be in the same AWS account 
@@ -28,7 +31,6 @@ On the clients, you need to generate a Private Key and create a CSR (Certificate
 end-entity certificates issued by the ACM PCA specified for an Amazon MSK cluster. These certificates and their 
 certificate chains are installed in the keystores on the client and are trusted by the Amazon MSK Apache Kafka brokers. 
 The steps are documented in [Client Authentication](https://docs.aws.amazon.com/msk/latest/developerguide/msk-authentication.html).
-This code helps automate those manual steps.
 
 
 ## Install
@@ -44,6 +46,7 @@ This code helps automate those manual steps.
 
 The jar file accepts the following parameters:  
 
+* **--help (or -h): help to get list of parameters**
 * **-caa (or --certificateAuthorityArn) (mandatory)**: The Arn of the Private Certificate Authority in ACM to issue the end-client certificates.
 * **-ksp (or --keystorePassword) (mandatory)**: The keystore password.
 * **-reg (or --region)(Default us-east-1)**: AWS Region.

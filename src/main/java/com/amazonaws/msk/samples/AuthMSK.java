@@ -1,9 +1,6 @@
 package com.amazonaws.msk.samples;
 
 import com.amazonaws.auth.*;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.acmpca.AWSACMPCA;
 import com.amazonaws.services.acmpca.AWSACMPCAClientBuilder;
 import com.amazonaws.services.acmpca.model.*;
@@ -19,7 +16,6 @@ import java.util.Objects;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.services.acmpca.model.SigningAlgorithm;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
 import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 import com.amazonaws.services.securitytoken.model.AssumeRoleRequest;
 import com.amazonaws.services.securitytoken.model.AssumeRoleResult;
@@ -83,9 +79,6 @@ public class AuthMSK {
     @Parameter(names={"--clientCertFileLocation", "-ccf"})
     private String clientCertFileLocation = "/home/ec2-user/kafka240/client_cert.pem";
 
-    //@Parameter(names={"--caChainFileLocation", "-caf"})
-    //private String caChainFileLocation = "/home/ec2-user/kafka240/ca_chain_cert.pem";
-
     @Parameter(names={"--crossAccountRoleArn", "-cra"})
     private String crossAccountRoleArn;
 
@@ -118,110 +111,14 @@ public class AuthMSK {
         return new BasicSessionCredentials(assumeRoleCredentials.getAccessKeyId(), assumeRoleCredentials.getSecretAccessKey(), assumeRoleCredentials.getSessionToken());
     }
 
-    /*private void deleteCertificateAuthority(String certificateAuthorityArn, Integer permanentDeletionTimeInDays, AWSACMPCA client){
-
-        DeleteCertificateAuthorityRequest deleteCertificateAuthorityRequest = new DeleteCertificateAuthorityRequest();
-        deleteCertificateAuthorityRequest
-                .withCertificateAuthorityArn(certificateAuthorityArn)
-                .withPermanentDeletionTimeInDays(permanentDeletionTimeInDays);
-
-        DeleteCertificateAuthorityResult result = client.deleteCertificateAuthority(deleteCertificateAuthorityRequest);
-
-
-        logger.info("Delete Certifcate Authority Resposne: \n" + result);
-
-    }*/
-
     private AWSACMPCA getAWSACMPCAClient(AWSStaticCredentialsProvider credentials){
         // Create a client that you can use to make requests.
         return AWSACMPCAClientBuilder.standard()
-                //.withEndpointConfiguration(endpoint)
                 .withRegion(region)
                 .withCredentials(credentials)
                 .build();
 
     }
-
-    /*private String createCertificateAuthority(AWSACMPCA client){
-
-
-        // Define a CA subject.
-        ASN1Subject subject = new ASN1Subject();
-        subject.setOrganization("Amazon");
-        subject.setOrganizationalUnit("AWS");
-        subject.setCountry("US");
-        subject.setState("New York");
-        subject.setLocality("New York City");
-        subject.setCommonName("MyPCA1");
-
-        // Define the CA configuration.
-        CertificateAuthorityConfiguration configCA = new CertificateAuthorityConfiguration();
-        configCA.withKeyAlgorithm(KeyAlgorithm.RSA_2048);
-        configCA.withSigningAlgorithm(SigningAlgorithm.SHA256WITHRSA);
-        configCA.withSubject(subject);
-
-        // Define a certificate revocation list configuration.
-//        CrlConfiguration crlConfigure = new CrlConfiguration();
-//        crlConfigure.withEnabled(true);
-//        crlConfigure.withExpirationInDays(365);
-//        crlConfigure.withCustomCname(null);
-//        crlConfigure.withS3BucketName("your-bucket-name");
-
-        //RevocationConfiguration revokeConfig = new RevocationConfiguration();
-        //revokeConfig.setCrlConfiguration(crlConfigure);
-
-        // Define a certificate authority type
-        CertificateAuthorityType CAtype = CertificateAuthorityType.ROOT;
-
-        // Create a tag - method 1
-        Tag tag1 = new Tag();
-        tag1.withKey("PrivateCA");
-        tag1.withValue("Sample");
-
-        // Create a tag - method 2
-        Tag tag2 = new Tag()
-                .withKey("Purpose")
-                .withValue("MSK");
-
-        // Add the tags to a collection.
-        ArrayList<Tag> tags = new ArrayList<>();
-        tags.add(tag1);
-        tags.add(tag2);
-
-        // Create the request object.
-        CreateCertificateAuthorityRequest req = new CreateCertificateAuthorityRequest();
-        req.withCertificateAuthorityConfiguration(configCA);
-        //req.withRevocationConfiguration(revokeConfig);
-        req.withIdempotencyToken("123987");
-        req.withCertificateAuthorityType(CAtype);
-        req.withTags(tags);
-
-
-        // Create the private CA.
-        CreateCertificateAuthorityResult result;
-
-        result = client.createCertificateAuthority(req);
-
-        // Retrieve the ARN of the private CA.
-        String arn = result.getCertificateAuthorityArn();
-        logger.info("Certificate Authority Arn: " + arn);
-
-        return arn;
-    }*/
-
-    /*private KeyPair generateKeyPair(String algorithm, int keySize){
-
-        try {
-            KeyPairGenerator keyPairGenerator;
-            keyPairGenerator = KeyPairGenerator.getInstance(algorithm);
-            keyPairGenerator.initialize(keySize);
-            return keyPairGenerator.generateKeyPair();
-
-        } catch (Exception exception){
-            exception.printStackTrace();
-        }
-        return null;
-    }*/
 
     private void storeKeystoreKeyEntry(X509Certificate [] certificateChain, String alias, String password, String keystoreType, Key key) throws Exception {
         KeyStore keystore = KeyStore.getInstance(keystoreType);
@@ -246,15 +143,6 @@ public class AuthMSK {
         }
         keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
     }
-
-    /*private void storeKeystoreClientCertificate(X509Certificate [] certificateChain, String password) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableKeyException {
-
-            KeyStore keystore = KeyStore.getInstance("PKCS12");
-            keystore.load(new FileInputStream(keystoreLocation), password.toCharArray());
-
-            keystore.setKeyEntry("msk", keystore.getKey(alias, password.toCharArray()), password.toCharArray(), certificateChain);
-            keystore.store(new FileOutputStream(keystoreLocation), password.toCharArray());
-    }*/
 
     private CertAndKeyGen generateKeyPairAndCert() throws NoSuchAlgorithmException, InvalidKeyException {
 
@@ -288,46 +176,6 @@ public class AuthMSK {
         chain[0] = cert;
         return chain;
     }
-
-    /*private void createKeyStore(CertAndKeyGen gen) throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, InvalidKeyException, SignatureException, NoSuchProviderException {
-
-
-        try {
-            //KeyPair keyPair = generateKeyPair("RSA", 2048);
-            //CertAndKeyGen gen = generateKeyPairAndCert();
-            KeyStore keystore = KeyStore.getInstance("PKCS12");
-            //KeyStore keystore = KeyStore.getInstance("JKS");
-            try {
-                keystore.load(new FileInputStream(keystoreLocation), "password".toCharArray());
-                logger.info("Loading existing keystore");
-            } catch (FileNotFoundException e) {
-                keystore.load(null, null);
-            }
-
-            X509Certificate cert = gen.getSelfCertificate(new X500Name("CN=" + InetAddress.getLocalHost().getHostName()), (long)365*24*3600);
-
-            X509Certificate[] chain = new X509Certificate[1];
-            chain[0] = cert;
-            keystore.setKeyEntry("msk", gen.getPrivateKey(), "password".toCharArray(), chain);
-            keystore.store(new FileOutputStream(keystoreLocation), "password".toCharArray());
-
-        } catch (KeyStoreException e) {
-            throw e;
-        } catch (IOException e) {
-            throw e;
-        } catch (NoSuchAlgorithmException e) {
-            throw e;
-        } catch (CertificateException e) {
-            throw e;
-        } catch (InvalidKeyException e) {
-            throw e;
-        } catch (SignatureException e) {
-            throw e;
-        } catch (NoSuchProviderException e) {
-            throw e;
-        }
-
-    }*/
 
     private byte [] getPrivateKeyinPEMFormat(CertAndKeyGen gen){
 
@@ -375,39 +223,6 @@ public class AuthMSK {
 
     }
 
-    /*private String getCertificateResult(AWSACMPCA client, GetCertificateRequest getCertificateRequest, int retries){
-        GetCertificateResult getCertificateResult;
-
-        try {
-            getCertificateResult = client.getCertificate(getCertificateRequest);
-            //System.out.println("Certificate: " + getCertificateResult.getCertificate());
-            //System.out.println("Certificate chain: " + getCertificateResult.getCertificateChain());
-
-            //System.out.println(getCertificateResult.getCertificateChain());
-            return (getCertificateResult.getCertificate() + "\n" + getCertificateResult.getCertificateChain());
-        } catch (RequestInProgressException ex) {
-
-            // Create waiter to wait on successful creation of the certificate file.
-            Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
-            try {
-                waiter.run(new WaiterParameters<>(getCertificateRequest));
-            } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
-                //Explicit short circuit when the recourse transitions into
-                //an undesired state.
-                e.printStackTrace();
-            } //Failed to transition into desired state even after polling.
-
-            retries++;
-            if (retries <= 5){
-                getCertificateResult(client, getCertificateRequest, retries);
-            } else {
-                throw ex;
-            }
-
-        }
-        throw new RequestInProgressException("Get Certificate failed after 5 tries. Certificate still not issued. Exiting");
-    }*/
-
     private String getCertificate(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
         GetCertificateRequest getCertificateRequest = new GetCertificateRequest();
         getCertificateRequest.withCertificateArn(certificateArn)
@@ -420,7 +235,8 @@ public class AuthMSK {
         } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
             //Explicit short circuit when the recourse transitions into
             //an undesired state.
-            e.printStackTrace();
+            logger.error("Error getting client certificate chain.\n");
+            throw e;
         } //Failed to transition into desired state even after polling.
 
         GetCertificateResult getCertificateResult;
@@ -441,7 +257,8 @@ public class AuthMSK {
         } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
             //Explicit short circuit when the recourse transitions into
             //an undesired state.
-            e.printStackTrace();
+            logger.error("Error getting client certificate.\n");
+            throw e;
         } //Failed to transition into desired state even after polling.
 
         GetCertificateResult getCertificateResult;
@@ -449,27 +266,6 @@ public class AuthMSK {
         getCertificateResult = client.getCertificate(getCertificateRequest);
         return getCertificateResult.getCertificate();
     }
-
-    /*private String getCACertificateChain(String certificateArn, String certificateAuthorityArn, AWSACMPCA client) {
-        GetCertificateRequest getCertificateRequest = new GetCertificateRequest();
-        getCertificateRequest.withCertificateArn(certificateArn)
-                .withCertificateAuthorityArn(certificateAuthorityArn);
-
-        // Create waiter to wait on successful creation of the certificate file.
-        Waiter<GetCertificateRequest> waiter = client.waiters().certificateIssued();
-        try {
-            waiter.run(new WaiterParameters<>(getCertificateRequest));
-        } catch(WaiterUnrecoverableException | WaiterTimedOutException e) {
-            //Explicit short circuit when the recourse transitions into
-            //an undesired state.
-            e.printStackTrace();
-        } //Failed to transition into desired state even after polling.
-
-        GetCertificateResult getCertificateResult;
-
-        getCertificateResult = client.getCertificate(getCertificateRequest);
-        return getCertificateResult.getCertificateChain();
-    }*/
 
     private X509Certificate [] getCertChain(String certChain) throws CertificateException {
         int fromIndex = 0;
@@ -578,8 +374,6 @@ public class AuthMSK {
         if (authMSK.createPEMFiles){
             logger.info(String.format("Writing out signed client certificate to: %s\n", authMSK.clientCertFileLocation));
             authMSK.writePEMFile(authMSK.clientCertFileLocation, authMSK.getClientCertificate(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
-            //logger.info(String.format("Writing out CA certificate chain to: %s\n", authMSK.caChainFileLocation));
-            //authMSK.writePEMFile(authMSK.caChainFileLocation, authMSK.getCACertificateChain(authMSK.certificateArn, authMSK.certificateAuthorityArn, client).getBytes());
         }
 
         logger.info("Converting into X509 certificate chain");
