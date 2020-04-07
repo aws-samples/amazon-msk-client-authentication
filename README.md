@@ -8,7 +8,8 @@ certificates for client authentication. This code helps automate the process of 
 and renewing them when they expire.
 
 Amazon MSK utilizes Amazon Certificate Manager Private Certificate Authority (ACM PCA) for TLS mutual authentication. For information about 
-Private Certificate Authoritys, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html).
+Private Certificate Authoritys, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html)
+and see [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority) for information on Certificate Authorities.
 The PCA can either be a [root Certificate Authority](https://en.wikipedia.org/wiki/Root_certificate) (CA) or a 
 [subordinate Certificate Authority](https://www.ssl.com/article/subordinate-cas-and-why-you-might-need-one/). 
 If it is a root CA, you need to install a self-signed certificate 
@@ -77,7 +78,7 @@ java -jar AuthMSK-1.0-SNAPSHOT.jar -h
 java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias>
 ```
 
-### To generate the Private Key on the client, generate the csr, get a certificate issued by the ACM PCA and get and install the certificate in the keystore in a region other than us-east-1
+### To generate the Private Key on the client, generate the csr, get a certificate issued by the ACM PCA and get and install the certificate in the keystore with the ACM PCA in a region other than us-east-1
 
 ```
 java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias> -reg <region> 
@@ -92,9 +93,25 @@ java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the key
  ### To generate the Private Key on the client, generate the csr, get a certificate issued by the ACM PCA in a different account and get and install the certificate in the keystore
  ***To create a cross account role see [Tutorial](https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html).***
  
- ```
- java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias> -cra <cross account role arn>)
- ```
+ With AWS CLI V2, you can use the following CLI commands to create a role in the remote account that can be used by clients in your current account:
+ 
+```
+aws iam create-role --role-name PCACrossAccountRole --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::<current-account-id>:root"},"Action":"sts:AssumeRole"}]}'
+aws iam create-policy --policy-name PCAPolicy --policy-document '{"Version":"2012-10-17","Statement":[{"Sid":"PCA1","Effect":"Allow","Action":["acm-pca:IssueCertificate","acm-pca:GetCertificate","acm-pca:ListPermissions"],"Resource":"arn:aws:acm-pca:us-east-2:<remote-account-id>:certificate-authority/c135e36c-c457-4ba3-8fc7-cae6f52a7971"}]}'
+aws iam attach-role-policy --role-name PCACrossAccountRole --policy-arn arn:aws:iam::<remote-account-id>:policy/PCAPolicy
+```
+
+Then in the current account, give a principal the ability to assume the role:
+
+```
+aws iam create-policy --policy-name PCACrossAccountAssumeRolePolicy --policy-document '{"Version":"2012-10-17","Statement":[{"Sid":"PCA2","Effect":"Allow","Action":"sts:assumeRole","Resource":"arn:aws:iam::<remote-account-id>:role/PCACrossAccountRole"}]}'
+aws iam attach-role-policy --role-name <role-in-current-account> --policy-arn arn:aws:iam::<current-account-id>:policy/PCACrossAccountAssumeRolePolicy
+```
+ 
+ Then in the current account:
+```
+ java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias> -cra <cross account role arn>
+```
  
 ### To just get and install a certificate using the certificate arn
 ***This can be useful for installing renewed certificates. When creating the ACM PCA or after creation, you can [authorize](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaPermissions.html) the ACM to be able to renew the PCA issued certificates.

@@ -34,7 +34,7 @@ public class AuthMSK {
     private String keystoreType = "PKCS12";
 
     @Parameter(names={"--keystorePassword", "-ksp"}, required = true)
-    private String keystorePassword = "PKCS12";
+    private String keystorePassword;
 
     @Parameter(names={"--certificateArn", "-cfa"})
     private String certificateArn;
