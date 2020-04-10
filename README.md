@@ -2,8 +2,9 @@
 
 It is a common security requirement to enable encryption-in-transit and authentication with Apache Kafka. Apache Kafka 
 supports multiple authentication mechanisms including TLS mutual authentication using certificates, SASL 
-(Simple Authorization Security Layer) PLAINTEXT, SASL SCRAM, SASL GSSAPI, SASL OAUTHBEARER. As or this writing, 
-Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
+(Simple Authorization Security Layer) PLAINTEXT, SASL Salted Challenge Response Authentication Mechanism  (SCRAM), 
+SASL Generic Security Services Application Program Interface (GSSAPI), SASL OAUTHBEARER (SASL mechanism for OAuth 2). 
+As or this writing, Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
 certificates for client authentication. This code helps automate the process of creating and installing end-entity certificates 
 and renewing them when they expire.
 
@@ -136,18 +137,49 @@ that the Private Key PEM file is already available.***
  java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias> -pem -ccf <Client certificate PEM file location>
  ```
 
+### To use a client with TLS mutual authentication with an Amazon MSK cluster
+
+* Create a truststore
+
+    On Linux:
+
+    ```
+    find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka.client.truststore.jks \;
+    ```
+  
+* Create a client.properties file and put the following in it  
+
+        security.protocol=SSL
+        ssl.truststore.location=/tmp/kafka.client.truststore.jks
+        ssl.keystore.location=/tmp/kafka.client.keystore.jks
+        ssl.keystore.password=<password that you used for the keystore when running the jar file>
+        ssl.key.password=<password that you used for the keystore when running the jar file>
+        ssl.truststore.password=<truststore password, default = changeit>
+
+* Create a Topic  
+
+        bin/kafka-topics.sh --create --zookeeper ZooKeeper-Connection-String --replication-factor 3 --partitions 1 --topic test
+        
+* Run the following command to start a console producer. The file named client.properties is the one you created in the previous procedure
+
+        bin/kafka-console-producer.sh --broker-list BootstrapBroker-String(TLS) --topic test --producer.config client.properties
+        
+* Run the following command to start a console consumer
+
+        bin/kafka-console-consumer.sh --bootstrap-server BootstrapBroker-String(TLS) --topic test --consumer.config client.properties
+
 ### Example of using kafka-python client with Amazon MSK with TLS mutual authentication
 
-* On Linux:
+On Linux:
 
-    ```
-    find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka221/kafka.client.truststore.jks \;
+    find /usr/lib/jvm/ -name "cacerts" -exec cp {} /tmp/kafka.client.truststore.jks \;
     keytool --list -rfc -keystore /tmp/kafka.client.truststore.jks >/tmp/truststore.pem
-    java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl /tmp/kafka.client.keystore.jks -ksp password -ksa msk -pem -pkf /tmp/private_key.pem -ccf /tmp/certificate.pem
-    ```
-    Sample Python consumer code using kafka-python:
+    java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl /tmp/kafka.client.keystore.jks -ksp password -ksa msk -pem -pkf /tmp/private_key.pem -ccf /tmp/certificate.pem  
     
-    ```
+
+   Sample Python consumer code using kafka-python:
+    
+
         from kafka import KafkaConsumer
         from kafka import TopicPartition
         TOPIC = "test"
