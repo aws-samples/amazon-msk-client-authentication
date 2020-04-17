@@ -4,12 +4,12 @@ It is a common security requirement to enable encryption-in-transit and authenti
 supports multiple authentication mechanisms including TLS mutual authentication using certificates, SASL 
 (Simple Authorization Security Layer) PLAINTEXT, SASL Salted Challenge Response Authentication Mechanism  (SCRAM), 
 SASL Generic Security Services Application Program Interface (GSSAPI), SASL OAUTHBEARER (SASL mechanism for OAuth 2). 
-As or this writing, Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
+As of this writing, Amazon Managed Streaming for Apache Kafka (Amazon MSK) supports encryption in transit with TLS and TLS mutual authentication with 
 certificates for client authentication. This code helps automate the process of creating and installing end-entity certificates 
 and renewing them when they expire.
 
-Amazon MSK utilizes Amazon Certificate Manager Private Certificate Authority (ACM PCA) for TLS mutual authentication. For information about 
-Private Certificate Authoritys, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html)
+Amazon MSK utilizes AWS Certificate Manager Private Certificate Authority (ACM PCA) for TLS mutual authentication. For information about 
+Private Certificate Authorities, see [Creating and Managing a Private CA](https://docs.aws.amazon.com/acm-pca/latest/userguide/PcaCreatingManagingCA.html)
 and see [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority) for information on Certificate Authorities.
 The PCA can either be a [root Certificate Authority](https://en.wikipedia.org/wiki/Root_certificate) (CA) or a 
 [subordinate Certificate Authority](https://www.ssl.com/article/subordinate-cas-and-why-you-might-need-one/). 
@@ -17,15 +17,14 @@ If it is a root CA, you need to install a self-signed certificate
 (the console provides an easy mechanism to do that). If it is a subordinate CA, you can either choose an ACM PCA root or
 subordinate CA or an external CA (in this case, the external CA which can be your own CA will become the root of your 
 certificate chain). In addition, for Amazon MSK to be able to use the ACM PCA, it needs to be in the same AWS account 
-as the Amazon MSK cluster. However, the Apache Kafka clients, for ex. the producers and consumers, schema 
+as the Amazon MSK cluster. However, the Apache Kafka clients, for example, the producers and consumers, schema 
 registries, Kafka Connect or other Apache Kafka tools that need the end-entity certificates can be in an AWS account 
 different from the AWS account that the ACM PCA is in. In that scenario, in order to be able to access the ACM PCA, 
-they need to assume a role in the account the ACM PCA is in and has the required permissions as the ACM PCA does not 
-support resource-based policies, only identity-based policies.
+they need to assume a role in the account the ACM PCA is in and has the required permissions.
 
 If encryption in-transit is enabled for an Amazon MSK cluster, Public TLS certificates from ACM are installed in the
 Amazon MSK Apache Kafka brokers in their keystores. If TLS mutual authentication is enabled for the Amazon MSK cluster, 
-you need to provide the arn (Amazon resource number) of a Private CA in ACM that the Amazon MSK cluster can utilize. The 
+you need to provide the ARN (Amazon Resource Number) of a Private CA in ACM that the Amazon MSK cluster can utilize. The 
 CA certificate and the certificate chain of the specified PCA are retrieved and installed in the truststores of the 
 Amazon MSK Apache Kafka brokers.
 
@@ -160,7 +159,7 @@ that the Private Key PEM file is already available.***
 
         bin/kafka-topics.sh --create --zookeeper ZooKeeper-Connection-String --replication-factor 3 --partitions 1 --topic test
         
-* Run the following command to start a console producer. The file named client.properties is the one you created in the previous procedure
+* Run the following command to start a console producer. The file named client.properties is the one you created in the previous step
 
         bin/kafka-console-producer.sh --broker-list BootstrapBroker-String(TLS) --topic test --producer.config client.properties
         
