@@ -179,29 +179,29 @@ On Linux:
    Sample Python consumer code using kafka-python:
     
 
-        from kafka import KafkaConsumer
-        from kafka import TopicPartition
-        TOPIC = "test"
-        
-        consumer = KafkaConsumer(bootstrap_servers='<msk bootstrap brokers for tls (port 9094)>',
-                                # For encryption in transit
-                                  security_protocol='SSL',
-                                  ssl_cafile='/tmp/truststore.pem'
-                                # For TLS mutual auth the above and:
-                                  ssl_check_hostname=True,
-                                  ssl_certfile='/tmp/client_cert.pem',
-                                  ssl_keyfile='/tmp/private_key.pem')
-                                # for the trustore copy the truststore from /etc/ssl/certs or the oracle jvm cacerts (find /usr/lib/jvm/ -name "cacerts" -exec cp {} /home/ec2-user/kafka/kafka.client.truststore.jks \;)
-                                # to generate the the truststore.pem: keytool --list -rfc -keystore /home/ec2-user/kafka240/kafka.client.truststore.jks > truststore.pem 
-        
-        # Read and print all messages from test topic
-        parts = consumer.partitions_for_topic(TOPIC)
-        if parts is None:
-           exit(1)
-        partitions = [TopicPartition(TOPIC, p) for p in parts]
-        consumer.assign(partitions)
-        for  partition in partitions:
-          consumer.seek_to_beginning(partition)
-        for msg in consumer:
-            print(msg)
-    ```
+    from kafka import KafkaConsumer
+    from kafka import TopicPartition
+    TOPIC = "test"
+           
+    consumer = KafkaConsumer(bootstrap_servers='<msk bootstrap brokers for tls (port 9094)>',
+                                   # For encryption in transit
+                                     security_protocol='SSL',
+                                     ssl_cafile='/tmp/truststore.pem',
+                                   # For TLS mutual auth the above and:
+                                     ssl_check_hostname=True,
+                                     ssl_certfile='/tmp/client_cert.pem',
+                                     ssl_keyfile='/tmp/private_key.pem')
+                                   # for the trustore copy the truststore from /etc/ssl/certs or the oracle jvm cacerts (find /usr/lib/jvm/ -name "cacerts" -exec cp {} /home/ec2-user/kafka/kafka.client.truststore.jks \;)
+                                   # to generate the the truststore.pem: keytool --list -rfc -keystore /home/ec2-user/kafka240/kafka.client.truststore.jks > truststore.pem 
+           
+    # Read and print all messages from test topic
+    parts = consumer.partitions_for_topic(TOPIC)
+    if parts is None:
+        exit(1)
+    partitions = [TopicPartition(TOPIC, p) for p in parts]
+    consumer.assign(partitions)
+    for  partition in partitions:
+        consumer.seek_to_beginning(partition)
+    for msg in consumer:
+        print(msg)
+       ```

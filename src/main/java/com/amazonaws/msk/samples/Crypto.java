@@ -5,8 +5,6 @@ import org.apache.logging.log4j.Logger;
 import sun.security.pkcs10.PKCS10;
 import sun.security.tools.keytool.CertAndKeyGen;
 import sun.security.x509.X500Name;
-
-import javax.xml.bind.DatatypeConverter;
 import java.io.*;
 import java.net.InetAddress;
 import java.security.*;
@@ -14,6 +12,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 class Crypto {
@@ -81,8 +80,9 @@ class Crypto {
     byte [] getPrivateKeyinPEMFormat(CertAndKeyGen gen){
 
         String keypem  = "-----BEGIN RSA PRIVATE KEY-----\n" +
-                DatatypeConverter.printBase64Binary(gen.getPrivateKey().getEncoded()) +
+                Base64.getEncoder().encodeToString(gen.getPrivateKey().getEncoded()) +
                 "\n-----END RSA PRIVATE KEY-----\n";
+
         logger.info(keypem);
         return keypem.getBytes();
     }
