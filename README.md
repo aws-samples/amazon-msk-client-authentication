@@ -13,10 +13,10 @@ Private Certificate Authorities, see [Creating and Managing a Private CA](https:
 and see [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority) for information on Certificate Authorities.
 The PCA can either be a [root Certificate Authority](https://en.wikipedia.org/wiki/Root_certificate) (CA) or a 
 [subordinate Certificate Authority](https://www.ssl.com/article/subordinate-cas-and-why-you-might-need-one/). 
-If it is a root CA, you need to install a self-signed certificate 
-(the console provides an easy mechanism to do that). If it is a subordinate CA, you can either choose an ACM PCA root or
-subordinate CA or an external CA (in this case, the external CA which can be your own CA will become the root of your 
-certificate chain). In addition, for Amazon MSK to be able to use the ACM PCA, it needs to be in the same AWS account 
+If it is a root CA, you need to install a self-signed certificate (the console provides an easy mechanism to do that). 
+If it is a subordinate CA, you can either choose an ACM PCA root or subordinate CA as the parent or an external CA 
+(in this case, the external CA which can be your own CA will issue the certificate that will be installed as the PCA 
+certificate and become part of the certificate chain). In addition, for Amazon MSK to be able to use the ACM PCA, it needs to be in the same AWS account 
 as the Amazon MSK cluster. However, the Apache Kafka clients, for example, the producers and consumers, schema 
 registries, Kafka Connect or other Apache Kafka tools that need the end-entity certificates can be in an AWS account 
 different from the AWS account that the ACM PCA is in. In that scenario, in order to be able to access the ACM PCA, 
