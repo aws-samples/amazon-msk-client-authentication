@@ -204,4 +204,4 @@ On Linux:
         consumer.seek_to_beginning(partition)
     for msg in consumer:
         print(msg)
-       ```
+    
