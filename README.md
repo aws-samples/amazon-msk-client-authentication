@@ -38,11 +38,11 @@ The steps are documented in [Client Authentication](https://docs.aws.amazon.com/
 
 ### Clone the repository and create the jar file.  
 
-    ```
+    
     git clone https://github.com/aws-samples/amazon-msk-client-authentication.git
     cd amazon-msk-client-authentication
     mvn clean package -f pom.xml
-    ```  
+      
     
 
 The jar file accepts the following parameters:  
