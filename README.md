@@ -49,6 +49,7 @@ The jar file accepts the following parameters:
 
 * **--help (or -h): help to get list of parameters**
 * **-caa (or --certificateAuthorityArn) (mandatory)**: The Arn of the Private Certificate Authority in ACM to issue the end-client certificates.
+* **-dgn (or --distinguishedName) (Default hostname)**: The distinguished name of the certificate issued by the ACM PCA.
 * **-ksp (or --keystorePassword) (mandatory)**: The keystore password.
 * **-reg (or --region)(Default us-east-1)**: AWS Region.
 * **-ksl (or --keystoreLocation)(Default /tmp/kafka.client.keystore.jks)**: The location of the keystore file.
@@ -57,12 +58,12 @@ The jar file accepts the following parameters:
 * **-cfv (or --certificateValidity)(Default 300)**: The validity of the certificate to be issued in days.
 * **-pem (or --createPEMFiles)**: Optional flag to create PEM files for the Private Key and the issued client certificate to be used by clients in python, node.js etc.
 * **-pkf (or --privateKeyPEMFileLocation)(Default /tmp/private_key.pem)**: Specifies the Private Key PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
-* **-ccf (or --clientCertFileLocation)(Default /tmp/client_cert.pem)**: Specified the Client Certificate PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
+* **-ccf (or --clientCertFileLocation)(Default /tmp/client_cert.pem)**: Specifies the Client Certificate PEM file location. Works in conjunction with **-pem** flag. Has no effect if the **-pem** flag is not specified.
 * **-cra (or --crossAccountRoleArn)**: Optional parameter that specifies an IAM Role in the ACM PCA account to assume when the client is in a different account from the ACM PCA.
 * **-gcc (or --getClientCertificate)**: Optional flag denoting that the Private Key generation and certificate issuance can be skipped and 
       the certificate specified with the  **-cfa** parameter should be retrieved and installed in the keystore. 
       This can help with the renewal of certificates when ACM is authorized to auto-renew the PCA certificates.
-* **-cfa (or --certificateArn)**: Specified the Arn of the ACM PCA certificate that needs to be retrieved and installed. 
+* **-cfa (or --certificateArn)**: Specified Arn of the ACM PCA certificate that needs to be retrieved and installed. 
       Needs to be specified if **-gcc** is specified. Works in conjunction with **-gcc** flag. Has no effect if the **-gcc** flag is not specified.
      
 ## Usage Examples
@@ -76,6 +77,12 @@ java -jar AuthMSK-1.0-SNAPSHOT.jar -h
 
 ```
 java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias>
+```
+
+### To generate the Private Key on the client, generate the csr with a specified Distinguished Name, get a certificate issued by the ACM PCA and get and install the certificate in the keystore
+
+```
+java -jar AuthMSK-1.0-SNAPSHOT.jar -caa <ACM PCA Arn> -ksl <full path of the keystore> -ksp <keystore password> -ksa <key entry alias> -dgn <distinguished name>
 ```
 
 ### To generate the Private Key on the client, generate the csr, get a certificate issued by the ACM PCA and get and install the certificate in the keystore with the ACM PCA in a region other than us-east-1

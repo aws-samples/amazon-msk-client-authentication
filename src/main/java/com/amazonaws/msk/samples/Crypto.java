@@ -87,11 +87,11 @@ class Crypto {
         return keypem.getBytes();
     }
 
-    String generateCSR(CertAndKeyGen gen) throws IOException, InvalidKeyException, SignatureException {
+    String generateCSR(CertAndKeyGen gen, String distinguishedName) throws IOException, InvalidKeyException, SignatureException {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         PrintStream printStream = new PrintStream(outStream);
 
-        X500Name x500Name = new X500Name("CN=" + InetAddress.getLocalHost().getHostName());
+        X500Name x500Name = new X500Name("CN=" + (distinguishedName != null ? distinguishedName: InetAddress.getLocalHost().getHostName()));
         PKCS10 pkcs10CSR = gen.getCertRequest(x500Name);
         pkcs10CSR.print(printStream);
         return outStream.toString().replace("BEGIN NEW CERTIFICATE REQUEST", "BEGIN CERTIFICATE REQUEST").replace("END NEW CERTIFICATE REQUEST", "END CERTIFICATE REQUEST");

@@ -11,10 +11,6 @@ import com.amazonaws.waiters.WaiterUnrecoverableException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
-
 class AWSACMPCAProxy {
 
     private static final Logger logger = LogManager.getLogger(AuthMSK.class);

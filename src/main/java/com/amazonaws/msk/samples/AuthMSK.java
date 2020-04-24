@@ -14,48 +14,51 @@ public class AuthMSK {
 
     private static final Logger logger = LogManager.getLogger(AuthMSK.class);
 
-    @Parameter(names={"--region", "-reg"})
+    @Parameter(names={"--region", "-reg"}, description = "AWS Region.")
     private String region = "us-east-1";
     private String endpointProtocol = "acm-pca." + region + ".amazonaws.com";
 
     @Parameter(names = {"--help", "-h"}, help = true)
     private boolean help = false;
 
-    @Parameter(names={"--keystoreLocation", "-ksl"})
+    @Parameter(names={"--keystoreLocation", "-ksl"}, description = "The location of the keystore file.")
     private String keystoreLocation = "/tmp/kafka.client.keystore.jks";
 
-    @Parameter(names={"--certificateAuthorityArn", "-caa"}, required = true)
+    @Parameter(names={"--certificateAuthorityArn", "-caa"}, required = true, description = "The Arn of the Private Certificate Authority in ACM to issue the end-client certificates.")
     private String certificateAuthorityArn;
 
-    @Parameter(names={"--alias", "-ksa"})
+    @Parameter(names={"--alias", "-ksa"}, description = "The alias of the key entry in the keystore.")
     private String alias = "msk";
 
-    @Parameter(names={"--keystoreType", "-kst"})
+    @Parameter(names={"--keystoreType", "-kst"}, description = "The keystore type.")
     private String keystoreType = "PKCS12";
 
-    @Parameter(names={"--keystorePassword", "-ksp"}, required = true)
+    @Parameter(names={"--keystorePassword", "-ksp"}, required = true, description = "The keystore password.")
     private String keystorePassword;
 
-    @Parameter(names={"--certificateArn", "-cfa"})
+    @Parameter(names={"--certificateArn", "-cfa"}, description = "Specified Arn of the ACM PCA certificate that needs to be retrieved and installed. Needs to be specified if -gcc is specified. Works in conjunction with -gcc flag. Has no effect if the -gcc flag is not specified.")
     private String certificateArn;
 
-    @Parameter(names={"--getClientCertificate", "-gcc"})
+    @Parameter(names={"--getClientCertificate", "-gcc"}, description = "Optional flag denoting that the Private Key generation and certificate issuance can be skipped and the certificate specified with the -cfa parameter should be retrieved and installed in the keystore. This can help with the renewal of certificates when ACM is authorized to auto-renew the PCA certificates.")
     private boolean getClientCertificate;
 
-    @Parameter(names={"--createPEMFiles", "-pem"})
+    @Parameter(names={"--createPEMFiles", "-pem"}, description = "Optional flag to create PEM files for the Private Key and the issued client certificate to be used by clients in python, node.js etc.")
     private boolean createPEMFiles;
 
-    @Parameter(names={"--certificateValidity", "-cfv"})
+    @Parameter(names={"--certificateValidity", "-cfv"}, description = "The validity of the certificate to be issued in days.")
     private long certificateValidity = 300L;
 
-    @Parameter(names={"--privateKeyPEMFileLocation", "-pkf"})
+    @Parameter(names={"--privateKeyPEMFileLocation", "-pkf"}, description = "Specifies the Private Key PEM file location. Works in conjunction with -pem flag. Has no effect if the -pem flag is not specified.")
     private String privateKeyPEMFileLocation = "/tmp/private_key.pem";
 
-    @Parameter(names={"--clientCertFileLocation", "-ccf"})
+    @Parameter(names={"--clientCertFileLocation", "-ccf"}, description = "Specifies the Client Certificate PEM file location. Works in conjunction with -pem flag. Has no effect if the -pem flag is not specified.")
     private String clientCertFileLocation = "/tmp/client_cert.pem";
 
-    @Parameter(names={"--crossAccountRoleArn", "-cra"})
+    @Parameter(names={"--crossAccountRoleArn", "-cra"}, description = "Optional parameter that specifies an IAM Role in the ACM PCA account to assume when the client is in a different account from the ACM PCA.")
     private String crossAccountRoleArn;
+
+    @Parameter(names={"--distinguishedName", "-dgn"}, description = "The distinguished name of the certificate issued by the ACM PCA. (Default hostname)")
+    private String distinguishedName;
 
     public static void main(String[] args) throws Exception{
 
@@ -105,7 +108,7 @@ public class AuthMSK {
             logger.info(String.format("Storing key and certificate in keystore: %s with alias: %s\n", authMSK.keystoreLocation, authMSK.alias));
             crypto.storeKeystoreKeyEntry(privateKeyCertificateChain, authMSK.alias, authMSK.keystorePassword, authMSK.keystoreType, gen.getPrivateKey(), authMSK.keystoreLocation);
             logger.info("Generating Certificate Signing Request");
-            String csrReq = crypto.generateCSR(gen);
+            String csrReq = crypto.generateCSR(gen, authMSK.distinguishedName);
             logger.info(String.format("CSR generated: \n%s\n", csrReq));
             logger.info("Getting certificate issued from ACM PCA");
             authMSK.certificateArn = awsacmpcaProxy.issueCertificate(authMSK.certificateAuthorityArn, csrReq, client, authMSK.certificateValidity);
