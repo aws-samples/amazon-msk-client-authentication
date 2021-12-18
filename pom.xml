@@ -10,7 +10,7 @@
 
     <properties>
         <kafka.version>2.3.1</kafka.version>
-        <log4j.version>2.15.0</log4j.version>
+        <log4j.version>2.17.0</log4j.version>
         <junit.version>5.3.1</junit.version>
         <java.version>1.8</java.version>
     </properties>
